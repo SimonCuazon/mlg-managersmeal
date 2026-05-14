@@ -36,8 +36,11 @@ scripts/
   inspect_records.py            Dump sample rows
   add_manager_link.py           Idempotent: add Manager Link field
   backfill_manager_link.py      Populate Manager link on historical rows
-  generate_qrs.py               Generate one QR PNG per manager
+  generate_qrs.py               Generate one plain QR PNG per manager
+  generate_branded_qrs.py       Generate branded MLG QR card per manager
   list_test_links.py            Print all 52 manager test URLs
+  fix_month_formula.py          One-shot fix for the Transaction History Month formula
+  cleanup_branch_options.py     Rename Manilay Bay typo, report duplicates
 ```
 
 ## Setup

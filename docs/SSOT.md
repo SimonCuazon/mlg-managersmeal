@@ -288,10 +288,10 @@ Output lands in `qr/` (gitignored). Print + distribute to managers.
 
 | Severity | Issue | Notes |
 |---|---|---|
-| Low | `Month` formula on Transaction History returns `"Invalid Month"` | The app ignores it and uses `Month Number` instead. Fix when convenient. |
+| ~~Low~~ | ~~`Month` formula on Transaction History returns `"Invalid Month"`~~ | **Fixed 2026-05-14.** Was `SWITCH(Month Number, …)` which never matched 1-12 (Month Number is `MONTH+YEAR`). Now `SWITCH(MONTH(Date), …)` → returns `"May"`, `"June"`, etc. |
 | Low | 52 per-manager tables clutter the base | Can be deleted once we're confident no other tool depends on them. |
 | Low | Two `OR Number` types across legacy tables (Text vs Number) | Cosmetic. New writes go to Transaction History only. |
-| Medium | Branch SingleSelect has duplicate options (`Mama Lou's Italian Kitchen - EVO` appears 3×) and a typo (`Manilay Bay`) | Worth a cleanup in Lark itself. |
+| Medium | Branch SingleSelect has duplicate options (`BGC` ×2, `EVO` ×3, `NAIA T3` ×2) | **Partial fix 2026-05-14:** `Manilay Bay` typo renamed to `Manila Bay` (option id preserved, historical rows auto-update). Duplicates still pending — needs manual merge in Lark UI (re-pointing existing records is too risky to automate). |
 | Medium | No cashier authentication | v1 ships without it. Add when scope allows (branch PIN is simplest). |
 | Medium | Transaction IDs collide between legacy per-manager tables (`2505001` appears twice in history) | Web-written rows use the `YYMM-{hex}` format which cannot collide. |
 | Low | Stale rollup if a transaction's Date is edited to a different month after creation | Out of normal flow. The rollup recomputes correctly on any read. |
@@ -310,6 +310,9 @@ Output lands in `qr/` (gitignored). Print + distribute to managers.
 | 2026-05-12 | Transaction ID format `YYMM-{6 hex}` for web-written rows. | Globally unique, preserves monthly grouping, distinguishes from legacy autonumber. |
 | 2026-05-12 | Hide `Credit` from UI; show `Available Balance` only. | User: credit is confidential. |
 | 2026-05-12 | No cashier auth in v1. | Faster to ship; access control via QR distribution + branch staff supervision. |
+| 2026-05-14 | Deployed to Vercel via GitHub integration. | Auto-deploy on push to main; preview URLs per PR. |
+| 2026-05-14 | Branded QR cards generated alongside plain QR PNGs. | Optional `assets/mlg-logo.png` replaces typographic wordmark when present. |
+| 2026-05-14 | Auto-merge of duplicate branch options deferred. | Re-pointing existing record references is too risky to automate; manual merge in Lark UI is safer. |
 
 ---
 

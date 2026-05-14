@@ -38,6 +38,10 @@ Master Records Credits.xlsx
 
 # Generated QR codes (regenerated after deploy)
 qr/
+qr_cards/
+
+# Optional logo asset (binary, kept locally)
+assets/
 
 # IDE / Claude Code workspace
 .claude/
