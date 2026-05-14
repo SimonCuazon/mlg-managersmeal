@@ -75,17 +75,28 @@ async function larkFetch<T = unknown>(
   return (data.data ?? {}) as T;
 }
 
-// Lark returns text fields as either a plain string or [{text, type}, ...].
+// Lark returns text fields in a few shapes:
+//   - plain string: "Alex Cruz"
+//   - array of parts: [{text: "Alex", type: "text"}]
+//   - Formula envelope: {type: 1, value: [{text: "52026", type: "text"}]}
+//   - empty link: {} or {value: []}
 export function textOf(v: unknown): string {
   if (v == null) return "";
   if (typeof v === "string") return v.trim();
+  if (typeof v === "number" || typeof v === "boolean") return String(v).trim();
   if (Array.isArray(v)) {
     return v
       .map((p) => (typeof p === "object" && p !== null && "text" in p ? (p as { text: string }).text : String(p)))
       .join("")
       .trim();
   }
-  return String(v).trim();
+  if (typeof v === "object") {
+    const o = v as { value?: unknown; text?: unknown };
+    if (Array.isArray(o.value)) return textOf(o.value);
+    if (typeof o.text === "string") return o.text.trim();
+    return "";
+  }
+  return "";
 }
 
 export type ManagerRecord = {
@@ -94,6 +105,20 @@ export type ManagerRecord = {
   position: string;
   credit: number;
   monthNumber: string; // e.g. "52026"
+  employeeId: string;
+};
+
+export type Transaction = {
+  recordId: string;
+  transactionId: string;
+  managerName: string;
+  managerRecordId: string | null;
+  branch: string;
+  orNumber: string;
+  spentValue: number;
+  date: number; // ms epoch
+  monthNumber: string;
+  month: string;
 };
 
 type LarkRecord = { record_id: string; fields: Record<string, unknown> };
@@ -106,6 +131,34 @@ function toManager(r: LarkRecord): ManagerRecord {
     position: textOf(f.Position),
     credit: typeof f.Credit === "number" ? (f.Credit as number) : Number(textOf(f.Credit)) || 0,
     monthNumber: textOf(f["Month Number"]),
+    employeeId: textOf(f["Employee ID"]),
+  };
+}
+
+function toTransaction(r: LarkRecord): Transaction {
+  const f = r.fields;
+  const dateRaw = f.Date;
+  const date = typeof dateRaw === "number" ? dateRaw : Number(dateRaw) || 0;
+  // Manager field shape: [{ record_ids: ['recXXX'], text_arr: ['Name'], ... }]
+  let managerRecordId: string | null = null;
+  const m = f.Manager;
+  if (Array.isArray(m) && m.length > 0 && typeof m[0] === "object" && m[0] !== null) {
+    const entry = m[0] as { record_ids?: string[] };
+    if (Array.isArray(entry.record_ids) && entry.record_ids[0]) {
+      managerRecordId = entry.record_ids[0];
+    }
+  }
+  return {
+    recordId: r.record_id,
+    transactionId: textOf(f["Transaction ID"]),
+    managerName: textOf(f.Name),
+    managerRecordId,
+    branch: textOf(f.Branch),
+    orNumber: textOf(f["OR Number"]),
+    spentValue: typeof f["Spent Value"] === "number" ? (f["Spent Value"] as number) : Number(textOf(f["Spent Value"])) || 0,
+    date,
+    monthNumber: textOf(f["Month Number"]),
+    month: textOf(f.Month),
   };
 }
 
@@ -161,6 +214,53 @@ export async function sumCurrentMonthSpending(managerRecordId: string, monthNumb
     else total += Number(textOf(v)) || 0;
   }
   return total;
+}
+
+export async function listManagerTransactions(managerRecordId: string): Promise<Transaction[]> {
+  const out: Transaction[] = [];
+  let pageToken: string | undefined;
+  do {
+    const data = await larkFetch<{ items?: LarkRecord[]; has_more?: boolean; page_token?: string }>(
+      `/open-apis/bitable/v1/apps/${BASE_ID}/tables/${TXN_TABLE}/records/search?page_size=500${pageToken ? `&page_token=${pageToken}` : ""}`,
+      {
+        method: "POST",
+        body: {
+          filter: {
+            conjunction: "and",
+            conditions: [{ field_name: "Manager", operator: "contains", value: [managerRecordId] }],
+          },
+        },
+      }
+    );
+    for (const it of data.items ?? []) out.push(toTransaction(it));
+    pageToken = data.has_more ? data.page_token : undefined;
+  } while (pageToken);
+  // Sort newest-first
+  out.sort((a, b) => b.date - a.date);
+  return out;
+}
+
+export async function listTransactionsByMonth(monthNumber: string): Promise<Transaction[]> {
+  const out: Transaction[] = [];
+  let pageToken: string | undefined;
+  do {
+    const data = await larkFetch<{ items?: LarkRecord[]; has_more?: boolean; page_token?: string }>(
+      `/open-apis/bitable/v1/apps/${BASE_ID}/tables/${TXN_TABLE}/records/search?page_size=500${pageToken ? `&page_token=${pageToken}` : ""}`,
+      {
+        method: "POST",
+        body: {
+          filter: {
+            conjunction: "and",
+            conditions: [{ field_name: "Month Number", operator: "is", value: [monthNumber] }],
+          },
+        },
+      }
+    );
+    for (const it of data.items ?? []) out.push(toTransaction(it));
+    pageToken = data.has_more ? data.page_token : undefined;
+  } while (pageToken);
+  out.sort((a, b) => b.date - a.date);
+  return out;
 }
 
 export async function listBranchOptions(): Promise<{ id: string; name: string }[]> {

@@ -90,6 +90,7 @@ The manager roster. 52 active records.
 | Current Month Spending | `fldcHcykIc` | Lookup (rollup) | Sum of `Transaction History.Spent Value` where Name+Month Number match. Auto-updates. |
 | Remaining Credit | `fld1Y1ZvwX` | Formula | `Credit − Current Month Spending`. |
 | Month Number | `fldIwl1FgX` | Formula | `CONCATENATE(MONTH(TODAY()), YEAR(TODAY()))` → e.g. `"52026"` in May 2026. Powers the monthly reset. |
+| Employee ID | *(field name lookup)* | Text | Per-manager identifier used to gate `/m/[recordId]/history`. Compared case-insensitive. Empty values → user gets "Employee ID is not yet set up" message. |
 
 ### 3.2 Transaction History (`tblVkJV8f3RCY8xi`)
 
@@ -150,11 +151,17 @@ Implications:
 
 ### 4.1 Routes
 
-| Route | Method | Purpose |
-|---|---|---|
-| `/` | GET | Landing page (placeholder). |
-| `/m/[recordId]` | GET (server component) | Cashier-facing form. Fetches manager + branches + current spending in parallel. |
-| `/api/transactions` | POST | Submit a transaction. **Full server-side validation.** |
+| Route | Method | Auth | Purpose |
+|---|---|---|---|
+| `/` | GET | none | Landing page (placeholder). |
+| `/m/[recordId]` | GET | none | Cashier-facing form. Fetches manager + branches + current spending in parallel. |
+| `/m/[recordId]/history` | GET | manager session | Manager's transaction history grouped by month, current month expanded by default. Gated on Employee ID. |
+| `/api/transactions` | POST | none | Submit a transaction. **Full server-side validation.** |
+| `/api/managers/[id]/verify` | POST/DELETE | none / sets session | Manager enters Employee ID; on match, server sets a 12h HMAC-signed cookie scoped to `manager:<recordId>`. DELETE clears it. |
+| `/admin/login` | GET | none | Admin password entry. Redirects to `/admin` if already signed in. |
+| `/admin` | GET | admin session | Accounting dashboard: stat cards, month/branch/manager filters, per-manager rollup table, transactions table, CSV export link. |
+| `/api/admin/login` | POST/DELETE | none / sets session | Admin password check; on success sets 12h HMAC-signed cookie scoped to `admin`. DELETE clears. |
+| `/api/admin/export` | GET | admin session | Returns CSV of filtered transactions. |
 
 ### 4.2 `/api/transactions` validation order
 
@@ -234,6 +241,8 @@ LARK_BASE_ID                 # The Bitable app token, e.g. DmiYbZsDha8RcWstSjNuh
 LARK_MANAGERS_TABLE_ID       # Optional override — defaults to Master Records id in code
 LARK_TRANSACTIONS_TABLE_ID   # Optional override — defaults to Transaction History id in code
 APP_BASE_URL                 # For QR generation only. Not read at runtime.
+SESSION_SECRET               # 48+ random chars. Signs auth cookies (HMAC-SHA256).
+ADMIN_PASSWORD               # Shared password for /admin. Wrap in double-quotes if it contains '#' (dotenv treats unquoted # as a comment).
 ```
 
 ### 6.3 Secrets handling
@@ -313,6 +322,9 @@ Output lands in `qr/` (gitignored). Print + distribute to managers.
 | 2026-05-14 | Deployed to Vercel via GitHub integration. | Auto-deploy on push to main; preview URLs per PR. |
 | 2026-05-14 | Branded QR cards generated alongside plain QR PNGs. | Optional `assets/mlg-logo.png` replaces typographic wordmark when present. |
 | 2026-05-14 | Auto-merge of duplicate branch options deferred. | Re-pointing existing record references is too risky to automate; manual merge in Lark UI is safer. |
+| 2026-05-14 | Added manager Transaction History view at `/m/[recordId]/history` gated by Employee ID. | Manager-only access (cashier doesn't know the ID). Past months collapsible; current month expanded. |
+| 2026-05-14 | Added accounting `/admin` dashboard with HMAC-signed cookie auth. | Single shared `ADMIN_PASSWORD`; 12h TTL. CSV export for reconciliation. |
+| 2026-05-14 | dotenv `#` comment gotcha hit during local test. | `ADMIN_PASSWORD` must be quoted if it contains `#`. Documented in §6.2. |
 
 ---
 

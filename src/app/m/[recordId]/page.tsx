@@ -101,6 +101,21 @@ export default async function CashierPage({
           branches={branches}
         />
       )}
+
+      <div style={{ marginTop: 20, textAlign: "center" }}>
+        <a
+          href={`/m/${manager.recordId}/history`}
+          style={{
+            fontSize: 12,
+            fontWeight: 700,
+            color: "#8B0000",
+            textDecoration: "none",
+            letterSpacing: "0.02em",
+          }}
+        >
+          View transaction history →
+        </a>
+      </div>
     </main>
   );
 }
