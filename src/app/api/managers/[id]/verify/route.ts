@@ -11,6 +11,12 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  if (!process.env.SESSION_SECRET) {
+    return NextResponse.json(
+      { ok: false, error: "Server missing SESSION_SECRET env var. Add it in Vercel and redeploy." },
+      { status: 503 }
+    );
+  }
   const { id } = await params;
   let body: Body;
   try {

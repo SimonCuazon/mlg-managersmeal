@@ -6,12 +6,22 @@ import { COOKIE_NAME, COOKIE_OPTIONS, newSession } from "@/lib/auth";
 export const runtime = "nodejs";
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
+const SESSION_SECRET = process.env.SESSION_SECRET || "";
 
 type Body = { password?: string };
 
 export async function POST(req: Request) {
   if (!ADMIN_PASSWORD) {
-    return NextResponse.json({ ok: false, error: "Admin login not configured" }, { status: 503 });
+    return NextResponse.json(
+      { ok: false, error: "Admin login not configured — server missing ADMIN_PASSWORD env var" },
+      { status: 503 }
+    );
+  }
+  if (!SESSION_SECRET) {
+    return NextResponse.json(
+      { ok: false, error: "Server missing SESSION_SECRET env var. Add it in Vercel and redeploy." },
+      { status: 503 }
+    );
   }
   let body: Body;
   try {
