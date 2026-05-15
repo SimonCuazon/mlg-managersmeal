@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { peso } from "@/lib/format";
 
 type Props = {
@@ -39,6 +40,7 @@ const labelStyle: React.CSSProperties = {
 };
 
 export default function MealForm({ recordId, managerName, remaining, branches }: Props) {
+  const router = useRouter();
   const [branch, setBranch] = useState("");
   const [orNumber, setOrNumber] = useState("");
   const [spent, setSpent] = useState("");
@@ -85,6 +87,9 @@ export default function MealForm({ recordId, managerName, remaining, branches }:
       setBranch("");
       setOrNumber("");
       setSpent("");
+      // Re-run the server component so the AVAILABLE BALANCE at the top
+      // reflects the new value without a full page reload.
+      router.refresh();
     } catch (err) {
       setStatus({ kind: "error", message: err instanceof Error ? err.message : "Network error" });
     }
